@@ -1,0 +1,67 @@
+/modularis
+├── /config
+│   ├── config.php                  # Fichier de configuration global
+│   └── .env                        # Fichier de configuration d'environnement (variables sensibles)
+│
+├── /core
+│   ├── Env.php                     # Classe pour gérer les variables d'environnement
+│   ├── Router.php                  # Classe pour le routage HTTP
+│   ├── View.php                    # Classe pour la gestion des vues
+│   ├── Controller.php              # Classe de base pour tous les contrôleurs
+│   ├── Database.php                # Classe pour la gestion des interactions avec la base de données
+│   ├── Middleware.php              # Classe de base pour tous les middlewares
+│   └── Logger.php                  # Classe pour la journalisation des erreurs et des événements
+│
+├── /modules
+│   ├── /error                      # Module réservé pour la gestion des erreurs
+│   │   ├── /controllers
+│   │   │   └── ErrorController.php # Contrôleur pour afficher les pages d'erreur
+│   │   ├── /views
+│   │   │   ├── 404.php             # Page d'erreur 404 (non trouvée)
+│   │   │   ├── 500.php             # Page d'erreur 500 (erreur serveur)
+│   │   │   └── generic.php         # Page d'erreur générique
+│   │   ├── /middlewares
+│   │   │   └── ErrorMiddleware.php # Middleware pour capturer les erreurs globales
+│   │   ├── /actions
+│   │   │   └── HandleErrorAction.php # Action pour gérer les erreurs spécifiques
+│   │   ├── /config
+│   │   │   └── config.php          # Configuration spécifique au module des erreurs
+│   │   ├── ErrorHandler.php        # Gestionnaire d'erreurs principal
+│   │   ├── Logger.php              # Classe pour la journalisation des erreurs (spécifique au module)
+│   │   └── routes.php              # Définition des routes pour le module error (optionnel)
+│   ├── /auth                       # Module réservé pour la gestion de l'authentification
+│   │   ├── /controllers
+│   │   │   └── AuthController.php  # Contrôleur pour gérer l'authentification
+│   │   ├── /models
+│   │   │   └── User.php            # Modèle utilisateur pour gérer les opérations liées aux utilisateurs
+│   │   ├── /views
+│   │   │   ├── login.php           # Page de connexion
+│   │   │   ├── register.php        # Page d'inscription
+│   │   │   └── reset_password.php  # Page de réinitialisation de mot de passe
+│   │   ├── /middlewares
+│   │   │   └── AuthMiddleware.php  # Middleware pour vérifier l'authentification
+│   │   ├── /actions
+│   │   │   ├── LoginAction.php     # Action pour traiter la connexion
+│   │   │   └── LogoutAction.php    # Action pour traiter la déconnexion
+│   │   ├── /config
+│   │   │   └── config.php          # Configuration spécifique au module d'authentification
+│   │   └── routes.php              # Définition des routes pour le module auth
+│   └── /<other_modules>            # Autres modules réservés ou spécifiques
+│
+├── /public
+│   ├── index.php                   # Point d'entrée principal de l'application
+│   ├── .htaccess                   # Fichier de configuration Apache (pour le routage, etc.)
+│   └── /assets                     # Répertoire des fichiers statiques (CSS, JS, images, etc.)
+│
+├── /scripts
+│   ├── install.php                 # Script d'installation pour configurer l'application
+│   └── update.php                  # Script de mise à jour pour maintenir l'application
+│
+├── /tests
+│   └── /Unit                       # Répertoire pour les tests unitaires
+│
+├── /vendor                         # Répertoire pour les dépendances installées par Composer
+│
+├── composer.json                   # Fichier de configuration Composer
+├── composer.lock                   # Fichier de verrouillage Composer
+└── README.md                       # Documentation du projet
