@@ -45,8 +45,9 @@ Ce dépôt contient le suivi de développement du framework Modularis, un framew
 
 7. **Router**
    - **Description**: Gère le routage des requêtes HTTP.
-   - **Statut**: À faire
+   - **Statut**: Complété
    - **Objectifs**: Définir et gérer les routes efficacement.
+   - **Tests**: Tests unitaires réalisés avec succès.
 
 8. **Request**
    - **Description**: Gère les données de requête HTTP.
@@ -70,8 +71,9 @@ Ce dépôt contient le suivi de développement du framework Modularis, un framew
 
 12. **Middleware**
     - **Description**: Fournit une gestion des middlewares.
-    - **Statut**: À faire
+    - **Statut**: Complété
     - **Objectifs**: Exécuter la logique intermédiaire de manière efficace.
+    - **Tests**: Tests unitaires réalisés avec succès.
 
 13. **Controller**
     - **Description**: Classe de base pour les contrôleurs de l'application.
@@ -107,4 +109,3 @@ Les contributions sont les bienvenues ! Veuillez soumettre des pull requests ave
 ## Licence
 
 *Information sur la licence à définir ultérieurement.*
-
