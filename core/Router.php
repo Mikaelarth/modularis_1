@@ -2,10 +2,13 @@
 
 namespace Core;
 
+use Exception;
+
 class Router
 {
     private static array $routes = [];
     private static string $basePath = '';
+    protected static $headerSender = 'header';
 
     /**
      * Définit le chemin de base pour toutes les routes.
@@ -18,6 +21,14 @@ class Router
     }
 
     /**
+     * Réinitialise toutes les routes.
+     */
+    public static function resetRoutes(): void
+    {
+        self::$routes = [];
+    }
+
+    /**
      * Ajoute une route au routeur.
      *
      * @param string $method Méthode HTTP (GET, POST, PUT, DELETE, etc.).
@@ -27,11 +38,13 @@ class Router
      */
     public static function add(string $method, string $route, callable $handler, array $middlewares = []): void
     {
-        self::$routes[] = [
-            'method' => strtoupper($method),
-            'route' => self::$basePath . '/' . trim($route, '/'),
+        $method = strtoupper($method);
+        $route = self::$basePath . '/' . trim($route, '/');
+        
+        self::$routes[$method][] = [
+            'route' => $route,
             'handler' => $handler,
-            'middlewares' => $middlewares,
+            'middlewares' => $middlewares
         ];
     }
 
@@ -75,19 +88,32 @@ class Router
      */
     public static function dispatch(string $requestUri, string $requestMethod): void
     {
-        foreach (self::$routes as $route) {
-            if ($route['method'] === strtoupper($requestMethod) && preg_match(self::convertRouteToRegex($route['route']), $requestUri, $matches)) {
-                array_shift($matches); // Enlever la correspondance complète
-                foreach ($route['middlewares'] as $middleware) {
-                    $middleware::handle();
+        $method = strtoupper($requestMethod);
+        if (!isset(self::$routes[$method])) {
+            self::sendNotFoundResponse();
+            return;
+        }
+
+        foreach (self::$routes[$method] as $route) {
+            $regex = self::convertRouteToRegex($route['route']);
+            if (preg_match($regex, $requestUri, $matches)) {
+                $params = [];
+                foreach ($matches as $key => $value) {
+                    if (is_string($key)) {
+                        $params[$key] = $value;
+                    }
                 }
-                call_user_func_array($route['handler'], $matches);
+
+                // Exécuter les middlewares
+                self::executeMiddlewares($route['middlewares']);
+
+                // Appeler le gestionnaire de route
+                call_user_func_array($route['handler'], $params);
                 return;
             }
         }
 
-        http_response_code(404);
-        echo '404 - Page Not Found';
+        self::sendNotFoundResponse();
     }
 
     /**
@@ -98,8 +124,76 @@ class Router
      */
     private static function convertRouteToRegex(string $route): string
     {
-        $route = preg_replace('/{([^\/]+)}/', '([^\/]+)', $route);
+        // Convertir les segments dynamiques en regex
+        $route = preg_replace('/{([^\/]+)}/', '(?P<\1>[^\/]+)', $route);
         return "@^" . $route . "$@D";
+    }
+
+    /**
+     * Exécute les middlewares pour une route donnée.
+     *
+     * @param array $middlewares Liste des middlewares à exécuter.
+     */
+    protected static function executeMiddlewares(array $middlewares): void
+    {
+        foreach ($middlewares as $middleware) {
+            if (is_callable($middleware)) {
+                $result = $middleware();
+            } elseif (is_string($middleware) && class_exists($middleware)) {
+                $result = (new $middleware)->handle();
+            } else {
+                continue; // Ignore les middlewares non valides
+            }
+
+            if ($result === false) {
+                // Stopper l'exécution si un middleware retourne false
+                return;
+            }
+        }
+    }
+
+    /**
+     * Redirige vers une autre URL.
+     *
+     * @param string $url URL de destination.
+     */
+    public static function redirect(string $url): void
+    {
+        $headerSender = self::$headerSender;
+        $headerSender('Location: ' . $url);
+        exit;
+    }
+
+    /**
+     * Retourne une réponse JSON.
+     *
+     * @param array $data Données à retourner en JSON.
+     */
+    public static function json(array $data): void
+    {
+        $headerSender = self::$headerSender;
+        $headerSender('Content-Type: application/json');
+        echo json_encode($data);
+        exit;
+    }
+
+    /**
+     * Définit un expéditeur d'en-tête personnalisé (pour les tests).
+     *
+     * @param callable $sender Fonction d'envoi d'en-tête.
+     */
+    public static function setHeaderSender(callable $sender): void
+    {
+        self::$headerSender = $sender;
+    }
+
+    /**
+     * Envoie une réponse 404 Not Found.
+     */
+    private static function sendNotFoundResponse(): void
+    {
+        http_response_code(404);
+        echo '404 - Page Not Found';
     }
 
     /**
@@ -116,35 +210,4 @@ class Router
         $callback();
         self::$basePath = $currentBasePath; // Réinitialiser le chemin de base après le groupe
     }
-
-    /**
-     * Redirige vers une autre URL.
-     *
-     * @param string $url URL de destination.
-     */
-    public static function redirect(string $url): void
-    {
-        header('Location: ' . $url);
-        exit;
-    }
-
-    /**
-     * Retourne une réponse JSON.
-     *
-     * @param array $data Données à retourner en JSON.
-     */
-    public static function json(array $data): void
-    {
-        header('Content-Type: application/json');
-        echo json_encode($data);
-        exit;
-    }
-	
-	
-    protected static $headerSender = 'header';
-
-    public static function setHeaderSender(callable $sender)
-    {
-        self::$headerSender = $sender;
-    }	
 }

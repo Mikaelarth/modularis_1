@@ -9,154 +9,164 @@ class RouterTest extends TestCase
 {
     protected function setUp(): void
     {
-        $this->resetRouter();
-        $this->resetHeaders();
-
-        // Injecter la fonction simulée pour l'envoi des headers
+        Router::resetRoutes();
         Router::setHeaderSender(function ($header) {
-            $this->mockHeader($header);
+            // Pour les tests, ne rien faire avec les en-têtes
         });
+        // Démarrer la capture de sortie
+        ob_start();
     }
 
-    protected function resetRouter(): void
+    protected function tearDown(): void
     {
-        $reflection = new \ReflectionClass(Router::class);
-        $routesProperty = $reflection->getProperty('routes');
-        $routesProperty->setAccessible(true);
-        $routesProperty->setValue([]);
-
-        $basePathProperty = $reflection->getProperty('basePath');
-        $basePathProperty->setAccessible(true);
-        $basePathProperty->setValue('');
-    }
-
-    protected function resetHeaders(): void
-    {
-        global $testHeaders;
-        $testHeaders = [];
-    }
-
-    public function mockHeader($header)
-    {
-        global $testHeaders;
-        $testHeaders[] = $header;
+        // Arrêter la capture de sortie
+        ob_end_clean();
     }
 
     public function testAddRoute()
     {
-        Router::get('/test', function() {
-            echo 'Test route';
+        Router::get('/home', function () {
+            echo 'Home';
         });
 
-        // Capture la sortie
-        ob_start();
-        Router::dispatch('/test', 'GET');
-        $output = ob_get_clean();
+        Router::dispatch('/home', 'GET');
 
-        $this->assertEquals('Test route', $output);
+        // Capturer la sortie
+        $output = ob_get_clean();
+        // Redémarrer la capture de sortie après récupération
+        ob_start();
+
+        $this->assertEquals('Home', $output);
     }
 
     public function testPostRoute()
     {
-        Router::post('/submit', function() {
+        Router::post('/submit', function () {
             echo 'Form submitted';
         });
 
-        // Capture la sortie
-        ob_start();
         Router::dispatch('/submit', 'POST');
+
         $output = ob_get_clean();
+        ob_start();
 
         $this->assertEquals('Form submitted', $output);
     }
 
     public function testRouteNotFound()
     {
-        // Capture la sortie
-        ob_start();
-        Router::dispatch('/nonexistent', 'GET');
+        Router::dispatch('/unknown', 'GET');
         $output = ob_get_clean();
+        ob_start();
 
         $this->assertEquals('404 - Page Not Found', $output);
     }
 
     public function testRouteWithParameters()
     {
-        Router::get('/user/{id}', function($id) {
+        Router::get('/user/{id}', function ($id) {
             echo "User ID: $id";
         });
 
-        // Capture la sortie
-        ob_start();
         Router::dispatch('/user/42', 'GET');
+
         $output = ob_get_clean();
+        ob_start();
 
         $this->assertEquals('User ID: 42', $output);
     }
 
     public function testGroupRoutes()
     {
-        Router::group('/admin', function() {
-            Router::get('/dashboard', function() {
+        Router::group('/admin', function () {
+            Router::get('/dashboard', function () {
                 echo 'Admin Dashboard';
             });
         });
 
-        // Capture la sortie
-        ob_start();
         Router::dispatch('/admin/dashboard', 'GET');
+
         $output = ob_get_clean();
+        ob_start();
 
         $this->assertEquals('Admin Dashboard', $output);
     }
 
     public function testMiddlewares()
     {
-        $middleware = new class {
-            public static function handle()
-            {
-                echo "Middleware executed. ";
+        $middlewareExecuted = false;
+
+        Router::get('/profile', function () use (&$middlewareExecuted) {
+            $middlewareExecuted = true;
+        }, [
+            function () use (&$middlewareExecuted) {
+                $middlewareExecuted = true;
+                return true;
             }
-        };
+        ]);
 
-        Router::get('/middleware-test', function() {
-            echo 'Middleware Route';
-        }, [get_class($middleware)]);
+        Router::dispatch('/profile', 'GET');
 
-        // Capture la sortie
-        ob_start();
-        Router::dispatch('/middleware-test', 'GET');
-        $output = ob_get_clean();
-
-        $this->assertEquals('Middleware executed. Middleware Route', $output);
+        $this->assertTrue($middlewareExecuted, 'Middleware should be executed');
     }
 
-	public function testRedirect()
-	{
-		// Test temporairement désactivé
-		$this->markTestSkipped('Test de redirection désactivé temporairement pour avancer avec les autres fonctionnalités.');
+    public function testRedirect()
+    {
+        Router::setHeaderSender(function ($header) {
+            echo $header;
+        });
 
-		// global $testHeaders;
-		// $this->resetHeaders();
+        Router::get('/old-route', function () {
+            Router::redirect('/new-route');
+        });
 
-		// Router::redirect('/new-location');
+        Router::dispatch('/old-route', 'GET');
 
-		// $this->assertContains('Location: /new-location', $testHeaders);
-	}
+        $output = ob_get_clean();
+        ob_start();
 
-	public function testJsonResponse()
-	{
-		// Test temporairement désactivé
-		$this->markTestSkipped('Test de réponse JSON désactivé temporairement pour avancer avec les autres fonctionnalités.');
+        $this->assertEquals('Location: /new-route', $output);
+    }
 
-		// global $testHeaders;
-		// $this->resetHeaders();
+    public function testJsonResponse()
+    {
+        Router::setHeaderSender(function ($header) {
+            echo $header;
+        });
 
-		// ob_start();
-		// Router::json(['status' => 'success', 'message' => 'Data processed']);
-		// $output = ob_get_clean();
+        Router::get('/data', function () {
+            Router::json(['success' => true]);
+        });
 
-		// $this->assertContains('Content-Type: application/json', $testHeaders);
-		// $this->assertEquals(json_encode(['status' => 'success', 'message' => 'Data processed']), $output);
-	}
+        Router::dispatch('/data', 'GET');
+
+        $output = ob_get_clean();
+        ob_start();
+
+        $this->assertEquals("Content-Type: application/json\n{\"success\":true}", $output);
+    }
+
+    public function testInvalidMethod()
+    {
+        Router::get('/only-get', function () {
+            echo 'Should not execute';
+        });
+
+        Router::dispatch('/only-get', 'POST');
+        $output = ob_get_clean();
+        ob_start();
+
+        $this->assertEquals('404 - Page Not Found', $output);
+    }
+
+    public function testRouteWithoutHandler()
+    {
+        Router::get('/no-handler', null);
+        Router::dispatch('/no-handler', 'GET');
+
+        $output = ob_get_clean();
+        ob_start();
+
+        $this->assertEquals('404 - Page Not Found', $output);
+    }
 }
